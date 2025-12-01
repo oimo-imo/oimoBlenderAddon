@@ -1,9 +1,9 @@
 bl_info = {
     "name": "OimoBlenderTool",
     "author": "Your Name",
-    "version": (1, 1), # バージョンを少し上げました
+    "version": (1, 2), # バージョン更新
     "blender": (3, 0, 0),
-    "location": "View3D > Sidebar > Oimo Tool",
+    "location": "View3D > Sidebar > OimoTool",
     "description": "便利なショートカットとツールをまとめたアドオン",
     "category": "3D View",
 }
@@ -21,20 +21,11 @@ class OBJECT_OT_OimoDropToFloor(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        # 選択されているオブジェクトをループ処理
         for obj in context.selected_objects:
             if obj.type == 'MESH':
-                # マトリックスワールドを更新して正確な座標を取得
                 context.view_layer.update()
-                
-                # ワールド座標でのバウンディングボックスの4隅を取得
                 world_corners = [obj.matrix_world @ list(corner) for corner in obj.bound_box]
-                
-                # その中で一番低いZ座標（底面の高さ）を見つける
                 min_z = min([co.z for co in world_corners])
-                
-                # 現在のZ位置から、底面の高さ分を引くことで、底面を0にする
-                # XとYは触らないので、その場で接地します
                 obj.location.z -= min_z
 
         self.report({'INFO'}, "オブジェクトを接地しました")
@@ -51,24 +42,35 @@ class OBJECT_OT_OimoSetOriginToSelected(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        # 編集モードかどうか確認
         if context.mode != 'EDIT_MESH':
             self.report({'WARNING'}, "編集モードで実行してください")
             return {'CANCELLED'}
 
-        # 1. 3Dカーソルを選択物の中心（重心）にスナップ
         bpy.ops.view3d.snap_cursor_to_selected()
-
-        # 2. オブジェクトモードに戻る
         bpy.ops.object.mode_set(mode='OBJECT')
-
-        # 3. 原点を3Dカーソルの位置に移動
         bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='MEDIAN')
-
-        # 4. 編集モードに戻す
         bpy.ops.object.mode_set(mode='EDIT')
         
         self.report({'INFO'}, "原点を移動しました")
+        return {'FINISHED'}
+
+
+# ------------------------------------------------------------------------
+#   機能3: 3Dカーソルをワールド原点へリセット (NEW)
+# ------------------------------------------------------------------------
+class VIEW3D_OT_OimoResetCursor(bpy.types.Operator):
+    """3Dカーソルをワールド原点(0,0,0)に戻します"""
+    bl_idname = "view3d.oimo_reset_cursor"
+    bl_label = "カーソルを原点へリセット"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        # カーソルの位置を直接(0,0,0)に指定
+        context.scene.cursor.location = (0.0, 0.0, 0.0)
+        # カーソルの回転もリセットしておくと安全です
+        context.scene.cursor.rotation_euler = (0.0, 0.0, 0.0)
+        
+        self.report({'INFO'}, "3Dカーソルをリセットしました")
         return {'FINISHED'}
 
 
@@ -87,27 +89,34 @@ class VIEW3D_PT_OimoPanel(bpy.types.Panel):
         layout = self.layout
         
         # --- セクション: 整列 ---
-        layout.label(text="整列ツール", icon='ALIGN_BOTTOM') # アイコンを下揃えっぽいものに変更
+        layout.label(text="整列ツール", icon='ALIGN_BOTTOM')
         row = layout.row()
         row.scale_y = 1.5
-        # 修正したクラスを呼び出すボタン
         row.operator(OBJECT_OT_OimoDropToFloor.bl_idname, text="床に接地 (Z=0)")
 
         layout.separator()
 
-        # --- セクション: 原点操作 ---
-        layout.label(text="原点操作 (編集モード)", icon='PIVOT_CURSOR')
+        # --- セクション: 原点・カーソル ---
+        layout.label(text="原点・カーソル操作", icon='PIVOT_CURSOR')
+        
+        # 原点移動 (編集モード用)
         row = layout.row()
         row.scale_y = 1.5
         row.operator(OBJECT_OT_OimoSetOriginToSelected.bl_idname, text="選択位置へ原点移動")
+        
+        # カーソルリセット (NEW)
+        row = layout.row()
+        row.scale_y = 1.2 # 少し高さを抑えめにする
+        row.operator(VIEW3D_OT_OimoResetCursor.bl_idname, text="3Dカーソルをリセット", icon='CURSOR')
 
 
 # ------------------------------------------------------------------------
 #   登録処理
 # ------------------------------------------------------------------------
 classes = (
-    OBJECT_OT_OimoDropToFloor,      # 名前を変えたのでここも更新
+    OBJECT_OT_OimoDropToFloor,
     OBJECT_OT_OimoSetOriginToSelected,
+    VIEW3D_OT_OimoResetCursor, # 追加
     VIEW3D_PT_OimoPanel,
 )
 
