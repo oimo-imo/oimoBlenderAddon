@@ -3,7 +3,7 @@ bl_info = {
     "author": "Oimo & Gemini",
     "version": (2, 4), # (★ MODIFIED v2.4 - 余計な設定を全削除)
     "blender": (5, 0, 0),
-    "location": "View3D > Sidebar (N-key) > My Tool",
+    "location": "View3D > Sidebar (N-key) > ImoExporter",
     "description": "Exports objects using pure default settings.",
     "category": "Import-Export",
 }
