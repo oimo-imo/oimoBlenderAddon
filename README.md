@@ -26,3 +26,12 @@
 自分用の多機能アドオン
 - 原点調整機能
 - 3Dカーソルをワールド原点に戻す機能
+
+
+### Unity_Layout_exporter
+- Blender上のトランスフォーム値をjsonにて書き出し、Unityに読み込ませ、同名のオブジェクトをその位置に配置するツール
+- PythonをBlenderに、C#をUnityに導入する必要あり
+    - Tools > Sync Blender Toolからパネルを出せます
+- Blender側の位置書き出し時に洗濯が必要なのは親のみ
+- Unityにて、Prefabを編集中の場合はPrefab内のオブジェクトのみ移動させる
+    - Prefabの中にいるときはPrefab編集中とパネルに表示される
