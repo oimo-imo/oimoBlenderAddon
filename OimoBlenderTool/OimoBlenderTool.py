@@ -82,6 +82,18 @@ class VIEW3D_OT_OimoResetCursor(bpy.types.Operator):
         return {'FINISHED'}
 
 
+
+class VIEW3D_OT_OimoViewSelected(bpy.types.Operator):
+    """選択したオブジェクトをフレームインします (NumPad .)"""
+    bl_idname = "view3d.oimo_view_selected"
+    bl_label = "選択をフレームイン"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        bpy.ops.view3d.view_selected()
+        return {'FINISHED'}
+
+
 # ========================================================================
 #   FEATURE 2: RENAME & MATERIAL APPLIER
 # ========================================================================
@@ -302,6 +314,10 @@ class VIEW3D_PT_OimoPanel(bpy.types.Panel):
         row.scale_y = 1.2
         row.operator(VIEW3D_OT_OimoResetCursor.bl_idname, text="3Dカーソルリセット", icon='CURSOR')
 
+        row = layout.row()
+        row.scale_y = 1.2
+        row.operator(VIEW3D_OT_OimoViewSelected.bl_idname, text="選択をフレームイン", icon='ZOOM_SELECTED')
+
 
 class VIEW3D_PT_OimoRenamePanel(bpy.types.Panel):
     """リネーム＆マテリアルパネル"""
@@ -363,6 +379,7 @@ classes = (
     OBJECT_OT_OimoDropToFloor,
     OBJECT_OT_OimoSetOriginToSelected,
     VIEW3D_OT_OimoResetCursor,
+    VIEW3D_OT_OimoViewSelected,
     VIEW3D_PT_OimoPanel,
     # Rename
     OBJECT_OT_OimoRenameAndMaterialApply,
