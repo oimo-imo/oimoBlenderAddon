@@ -160,6 +160,62 @@ class OBJECT_OT_OimoRenameAndMaterialApply(bpy.types.Operator):
 
 
 # ========================================================================
+#   FEATURE 2.5: INDIVIDUAL RENAME (Handler & Operator)
+# ========================================================================
+
+# グローバルでアクティブオブジェクトの変化を追跡するための変数
+oimo_last_active_object_name = ""
+
+def oimo_get_rename_from(self):
+    global oimo_last_active_object_name
+    try:
+        active_obj = self.view_layers.active.objects.active
+        if active_obj:
+            current_name = active_obj.name
+            if oimo_last_active_object_name != current_name:
+                self["oimo_tool_rename_from_temp"] = current_name
+                oimo_last_active_object_name = current_name
+            return self.get("oimo_tool_rename_from_temp", current_name)
+    except Exception:
+        pass
+    return ""
+
+def oimo_set_rename_from(self, value):
+    self["oimo_tool_rename_from_temp"] = value
+
+
+class OBJECT_OT_OimoIndividualRename(bpy.types.Operator):
+    """選択中のアクティブオブジェクトの名前を変更します"""
+    bl_idname = "object.oimo_individual_rename"
+    bl_label = "個別リネーム実行"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        scene = context.scene
+        rename_from = scene.oimo_tool_rename_from
+        rename_to = scene.oimo_tool_rename_to
+        active_obj = context.active_object
+
+        if not active_obj:
+            self.report({'WARNING'}, "アクティブなオブジェクトがありません。")
+            return {'CANCELLED'}
+
+        if not rename_to:
+            self.report({'WARNING'}, "リネーム後の名前を入力してください。")
+            return {'CANCELLED'}
+
+        old_name = active_obj.name
+        active_obj.name = rename_to
+        
+        # プロパティの同期とクリア
+        scene["oimo_tool_rename_from_temp"] = active_obj.name
+        scene.oimo_tool_rename_to = ""
+
+        self.report({'INFO'}, f"'{old_name}' を '{active_obj.name}' にリネームしました。")
+        return {'FINISHED'}
+
+
+# ========================================================================
 #   FEATURE 3: BATCH FBX EXPORTER
 # ========================================================================
 
@@ -331,6 +387,7 @@ class VIEW3D_PT_OimoRenamePanel(bpy.types.Panel):
         layout = self.layout
         scene = context.scene
         
+        # --- 一括設定 ---
         box = layout.box()
         box.label(text="一括設定", icon='SETTINGS')
         
@@ -338,8 +395,23 @@ class VIEW3D_PT_OimoRenamePanel(bpy.types.Panel):
         col.prop(scene, "oimo_tool_object_name")
         col.prop(scene, "oimo_tool_material_name")
         
+        box.operator(OBJECT_OT_OimoRenameAndMaterialApply.bl_idname, text="一括適用", icon='PLAY')
+        
         layout.separator()
-        layout.operator(OBJECT_OT_OimoRenameAndMaterialApply.bl_idname, icon='PLAY')
+        
+        # --- 個別リネーム ---
+        box2 = layout.box()
+        box2.label(text="個別リネーム", icon='FONT_DATA')
+        
+        active_obj = context.active_object
+        if active_obj:
+            col2 = box2.column(align=True)
+            col2.prop(scene, "oimo_tool_rename_from", text="リネーム前")
+            col2.prop(scene, "oimo_tool_rename_to", text="リネーム後")
+            
+            box2.operator(OBJECT_OT_OimoIndividualRename.bl_idname, text="リネーム実行", icon='PLAY')
+        else:
+            box2.label(text="オブジェクトを選択してください", icon='ERROR')
 
 
 class VIEW3D_PT_OimoExporterPanel(bpy.types.Panel):
@@ -383,6 +455,7 @@ classes = (
     VIEW3D_PT_OimoPanel,
     # Rename
     OBJECT_OT_OimoRenameAndMaterialApply,
+    OBJECT_OT_OimoIndividualRename,
     VIEW3D_PT_OimoRenamePanel,
     # Exporter
     OimoExporterProperties,
@@ -403,6 +476,17 @@ def register_properties():
         description="設定・作成するマテリアル名",
         default="MyMaterial"
     )
+    bpy.types.Scene.oimo_tool_rename_from = bpy.props.StringProperty(
+        name="リネーム前",
+        description="選択しているオブジェクトの現在の名前",
+        get=oimo_get_rename_from,
+        set=oimo_set_rename_from
+    )
+    bpy.types.Scene.oimo_tool_rename_to = bpy.props.StringProperty(
+        name="リネーム後",
+        description="リネーム後の新しい名前",
+        default=""
+    )
     # Exporter Props
     bpy.types.Scene.oimo_exporter_props = bpy.props.PointerProperty(type=OimoExporterProperties)
 
@@ -411,6 +495,10 @@ def unregister_properties():
         del bpy.types.Scene.oimo_tool_object_name
     if hasattr(bpy.types.Scene, "oimo_tool_material_name"):
         del bpy.types.Scene.oimo_tool_material_name
+    if hasattr(bpy.types.Scene, "oimo_tool_rename_from"):
+        del bpy.types.Scene.oimo_tool_rename_from
+    if hasattr(bpy.types.Scene, "oimo_tool_rename_to"):
+        del bpy.types.Scene.oimo_tool_rename_to
     if hasattr(bpy.types.Scene, "oimo_exporter_props"):
         del bpy.types.Scene.oimo_exporter_props
 
